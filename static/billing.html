@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EZTrading Premium</title>
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-page">
+  <main class="login-card card billing-card">
+    <p class="small"><a href="/">← Back to EZTrading</a></p>
+    <h1>Premium</h1>
+    <p id="billing-error" class="error hidden" role="alert"></p>
+    <p id="billing-status" class="notice small" role="status">Loading…</p>
+
+    <section class="plan-box stack">
+      <div class="row space">
+        <strong>EZTrading Premium</strong>
+        <span><span id="plan-price" class="big">₹—</span> <span id="plan-period" class="small muted"></span></span>
+      </div>
+      <ul class="small benefits">
+        <li>Use Gemini and Claude advisors with EZTrading's API keys: no key of your own needed</li>
+        <li>AI-powered auto-analysis schedules and IPO verdicts</li>
+        <li>No auto-renewal: pay again only if you want to continue</li>
+      </ul>
+      <p class="small muted">Free plan: Rules advisor, or AI advisors with your own API key.</p>
+    </section>
+
+    <form id="coupon-form" class="stack">
+      <label for="coupon">Coupon code</label>
+      <div class="row">
+        <input id="coupon" autocomplete="off" placeholder="e.g. FREE7" maxlength="32" class="grow">
+        <button class="btn btn-secondary" type="submit">Apply</button>
+      </div>
+      <p id="quote" class="small muted"></p>
+    </form>
+
+    <p id="payments-off" class="small muted hidden">Online payments are coming soon. You can activate Premium with a coupon code.</p>
+    <button id="pay-btn" class="btn btn-block" type="button">Continue</button>
+    <p class="disclaimer small">Informational decision support only, not investment advice.</p>
+  </main>
+  <script type="module" src="js/billing.js"></script>
+</body>
+</html>

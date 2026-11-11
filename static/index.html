@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EZTrading</title>
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">EZTrading</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="portfolio" role="tab">Portfolio</button>
+      <button class="tab" data-tab="ipo" role="tab">IPO</button>
+    </nav>
+    <div class="top-actions">
+      <label class="sr-only" for="advisor-select">AI advisor</label>
+      <select id="advisor-select" title="AI advisor"></select>
+      <button id="kite-pill" class="pill" type="button">Kite…</button>
+      <div class="menu-wrap">
+        <button id="avatar-btn" class="avatar" type="button" aria-haspopup="true" aria-expanded="false">?</button>
+        <div id="user-menu" class="menu hidden" role="menu">
+          <div id="user-email" class="menu-head small muted"></div>
+          <button id="open-settings" type="button" role="menuitem">Settings</button>
+          <a id="open-premium" class="menu-link" href="/billing.html" role="menuitem">Premium <span id="plan-badge" class="plan-badge">Free</span></a>
+          <div class="menu-theme" role="group" aria-label="Theme">
+            <span class="small muted">Theme</span>
+            <div class="segmented segmented-sm">
+              <button type="button" data-theme-choice="system">Auto</button>
+              <button type="button" data-theme-choice="light">Light</button>
+              <button type="button" data-theme-choice="dark">Dark</button>
+            </div>
+          </div>
+          <button id="logout-btn" type="button" role="menuitem">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Portfolio tab -->
+  <main id="tab-portfolio" class="layout">
+    <section class="card">
+      <h2>Wallet</h2>
+      <p class="muted small">How much you want to deploy now. Plans never spend more than this.</p>
+      <form id="wallet-form" class="row">
+        <label for="wallet-input" class="sr-only">Deployable amount</label>
+        <span class="prefix">₹</span>
+        <input id="wallet-input" type="number" min="0" step="100" placeholder="0" required>
+        <button class="btn" type="submit">Save</button>
+      </form>
+      <p class="small">Saved: <strong id="wallet-saved">₹0</strong></p>
+      <p class="small muted">Kite available cash: <span id="broker-cash">—</span></p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Holdings</h2>
+        <button id="refresh-btn" class="btn btn-secondary" type="button">Refresh</button>
+      </div>
+      <div id="totals" class="totals"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Symbol</th><th class="num">Qty</th><th class="num">Avg</th><th class="num">LTP</th>
+            <th class="num">Value</th><th class="num">P&amp;L</th><th class="num">Day</th></tr></thead>
+          <tbody id="holdings-body"><tr><td colspan="7" class="muted">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <p class="small muted" id="holdings-time"></p>
+    </section>
+
+    <section class="card wide">
+      <div class="card-head">
+        <h2>Suggestions</h2>
+        <div class="row wrap">
+          <div id="style-picker" class="segmented" role="radiogroup" aria-label="Trading style"></div>
+          <button id="dismiss-btn" class="btn btn-secondary hidden" type="button">Ignore all</button>
+          <button id="analyze-btn" class="btn" type="button">Analyze</button>
+        </div>
+      </div>
+      <p id="style-desc" class="small muted"></p>
+      <div id="plan-body"><p class="muted">Set your wallet amount, pick a style, then press Analyze.</p></div>
+    </section>
+
+    <section class="card wide">
+      <div class="card-head">
+        <h2>Recent orders</h2>
+        <button id="orders-refresh" class="btn btn-secondary" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th>Type</th>
+            <th class="num">Price</th><th>Status</th><th>Kite order id</th></tr></thead>
+          <tbody id="orders-body"><tr><td colspan="8" class="muted">No orders yet.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- IPO tab -->
+  <main id="tab-ipo" class="layout hidden">
+    <section class="card wide">
+      <div class="card-head">
+        <h2>IPOs</h2>
+        <div class="row">
+          <button id="ipo-refresh" class="btn btn-secondary" type="button">Refresh</button>
+          <button id="ipo-review-btn" class="btn" type="button">Get AI review</button>
+        </div>
+      </div>
+      <p class="small muted">Open and upcoming NSE issues. Apply in the Kite app (Bids → IPO) using UPI; IPO bids can't be placed through the API.</p>
+      <p id="ipo-overview" class="market-view hidden"></p>
+      <div id="ipo-body"><p class="muted">Loading…</p></div>
+    </section>
+  </main>
+
+  <footer class="disclaimer">
+    Informational decision support only, not investment advice. Suggestions can be wrong. Every order is placed only after you confirm it.
+  </footer>
+
+  <!-- Execute dialog -->
+  <dialog id="execute-dialog" class="dialog">
+    <form id="execute-form" method="dialog" class="stack">
+      <h2 id="execute-title">Confirm order</h2>
+      <div id="execute-summary" class="small"></div>
+      <div class="grid2">
+        <label>Quantity<input id="exec-qty" type="number" min="1" step="1" required></label>
+        <label>Order type
+          <select id="exec-type"><option value="LIMIT">Limit</option><option value="MARKET">Market</option></select>
+        </label>
+        <label id="exec-price-wrap">Limit price (₹)<input id="exec-price" type="number" min="0.05" step="0.05"></label>
+        <div><span class="small muted">Estimated value</span><div id="exec-est" class="big">—</div></div>
+      </div>
+      <label class="check"><input id="exec-confirm" type="checkbox" required> I have reviewed this order and want to place it on Kite now.</label>
+      <p id="exec-error" class="error hidden"></p>
+      <div class="row end">
+        <button type="button" class="btn btn-secondary" data-close>Cancel</button>
+        <button id="exec-submit" type="submit" class="btn" value="confirm">Place order</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Push permission popup -->
+  <dialog id="push-dialog" class="dialog">
+    <div class="stack">
+      <h2 id="push-dialog-title">Allow notifications on this device?</h2>
+      <p id="push-dialog-text" class="small"></p>
+      <div class="row end">
+        <button id="push-later" type="button" class="btn btn-secondary">Not now</button>
+        <button id="push-allow" type="button" class="btn">Allow</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Settings dialog -->
+  <dialog id="settings-dialog" class="dialog wide-dialog">
+    <div class="stack">
+      <div class="card-head"><h2>Settings</h2><button type="button" class="btn btn-secondary" data-close>Close</button></div>
+
+      <section class="settings-section">
+        <h3>Zerodha Kite</h3>
+        <p class="small muted">Create an app at developers.kite.trade and set its Redirect URL to:</p>
+        <div class="row"><code id="kite-redirect" class="code-box"></code><button id="copy-redirect" class="btn btn-secondary" type="button">Copy</button></div>
+        <p class="small">Saved key: <strong id="kite-hint">none</strong></p>
+        <form id="kite-form" class="grid2">
+          <label>API key<input id="kite-key" autocomplete="off" required></label>
+          <label>API secret<input id="kite-secret" type="password" autocomplete="new-password" required></label>
+          <div class="row"><button class="btn" type="submit">Save Kite keys</button>
+            <button id="kite-delete" class="btn btn-secondary" type="button">Remove</button></div>
+        </form>
+      </section>
+
+      <section class="settings-section">
+        <h3>AI keys <span class="small muted">(optional, override the server's keys)</span></h3>
+        <p id="ai-premium-note" class="notice small hidden">Using EZTrading's own AI keys is a Premium feature.
+          Add your own key below to use Gemini or Claude for free, or <a href="/billing.html">get Premium</a>.</p>
+        <form class="key-form grid2" data-kind="gemini">
+          <label>Gemini API key <span class="small muted" data-hint></span><input type="password" autocomplete="off" required></label>
+          <div class="row"><button class="btn" type="submit">Save</button><button class="btn btn-secondary" type="button" data-delete>Remove</button></div>
+        </form>
+        <form class="key-form grid2" data-kind="claude">
+          <label>Anthropic API key <span class="small muted" data-hint></span><input type="password" autocomplete="off" required></label>
+          <div class="row"><button class="btn" type="submit">Save</button><button class="btn btn-secondary" type="button" data-delete>Remove</button></div>
+        </form>
+      </section>
+
+      <section class="settings-section">
+        <h3>Trading &amp; auto-analysis</h3>
+        <label class="inline-label">Default style <select id="set-style"></select></label>
+        <p class="small muted">Auto-analysis schedules run during market hours and notify you when action is needed.
+          Add one per style and interval, e.g. Intraday every 15 min and Swing every 2 hours.</p>
+        <div id="schedule-list" class="schedule-list"></div>
+        <form id="schedule-add" class="schedule-row">
+          <select id="sched-new-style" aria-label="Style"></select>
+          <label class="inline-label">every <input id="sched-new-interval" type="number" min="5" step="5" required aria-label="Interval in minutes"> min</label>
+          <button class="btn" type="submit">Add schedule</button>
+        </form>
+        <p class="small muted">Auto-analysis never places orders. Each run calls the AI advisor and uses API credits.</p>
+      </section>
+
+      <section class="settings-section">
+        <h3>Notifications</h3>
+        <div class="row wrap">
+          <label class="check"><input id="set-push" type="checkbox"> Browser push</label>
+          <span id="push-state" class="small muted"></span>
+        </div>
+        <div class="row wrap">
+          <label class="check"><input id="set-telegram" type="checkbox"> Telegram</label>
+          <span id="telegram-state" class="small muted"></span>
+          <button id="telegram-link" class="btn btn-secondary" type="button">Connect Telegram</button>
+          <button id="telegram-unlink" class="btn btn-secondary hidden" type="button">Disconnect</button>
+        </div>
+        <div id="telegram-manual" class="small muted hidden">
+          <p>Send this message to <strong id="telegram-bot"></strong> in Telegram (phone, desktop or web) within 15 minutes, then reopen Settings:</p>
+          <div class="row wrap">
+            <code id="telegram-cmd"></code>
+            <button id="telegram-copy" class="btn btn-secondary" type="button">Copy</button>
+          </div>
+          <p>
+            <a id="telegram-open-web" target="_blank" rel="noopener">Open in Telegram Web</a> ·
+            <a id="telegram-open-app" target="_blank" rel="noopener">Open in Telegram app</a>
+          </p>
+        </div>
+        <button id="notify-test" class="btn btn-secondary" type="button">Send test notification</button>
+      </section>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

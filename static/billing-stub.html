@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Test payment</title>
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-page">
+  <main class="login-card card">
+    <h1>Test payment</h1>
+    <p class="notice small">This is a stand-in for a real payment provider. No money moves.</p>
+    <p id="stub-error" class="error hidden" role="alert"></p>
+    <p>EZTrading Premium: <strong id="stub-amount">₹—</strong></p>
+    <div class="row end">
+      <button id="stub-fail" class="btn btn-secondary" type="button">Simulate failure</button>
+      <button id="stub-pay" class="btn" type="button">Simulate successful payment</button>
+    </div>
+  </main>
+  <script type="module" src="js/billing-stub.js"></script>
+</body>
+</html>
