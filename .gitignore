@@ -8,3 +8,6 @@ data-demo/
 *.db
 ci.db
 .claude/
+.env.*
+!.env.example
+!.env.production.example

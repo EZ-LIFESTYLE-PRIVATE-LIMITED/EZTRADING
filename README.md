@@ -40,6 +40,21 @@ Open http://127.0.0.1:8000 and use **Dev sign-in**. The SQLite database and migr
 - **Premium locally:** not enforced in development, so everyone can use the server's AI keys. Set `PREMIUM_ENFORCED=true` to test the paywall; the stub's test payment page then works, and `FREE7` gives 7 days. Manage coupons with `python -m scripts.coupons list|add|disable`.
 - **Google sign-in locally:** create the OAuth client described under Deploy, but add `http://127.0.0.1:8000/auth/google/callback` as an authorized redirect URI. Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env` and restart. Signing in with Google using the same email as a dev-login account takes that account over, keeping its keys, wallet and plans.
 
+## Production-like test on your PC
+
+Runs the real production setup (`ENV=production`, Postgres, worker, Caddy HTTPS) at **https://localhost**, plus [Mailpit](https://mailpit.axllent.org/) to catch sign-up and reset emails.
+
+1. Create `.env.prodlocal` (git-ignored) with `APP_ENV_FILE=.env.prodlocal`, `DOMAIN=localhost`, `PUBLIC_BASE_URL=https://localhost`, a `POSTGRES_PASSWORD`, the output of `python scripts/gen_keys.py`, your Google/AI keys, and `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_STARTTLS=false`, `SMTP_FROM=...`. Set `ORDERS_ENABLED=false` while testing.
+2. Start it:
+   ```bash
+   docker compose -p eztrading-local --env-file .env.prodlocal -f docker-compose.yml -f docker-compose.local.yml up -d --build
+   ```
+3. Open https://localhost. Caddy uses its own local certificate, so the browser warns once; continue anyway. Emails (codes) arrive at http://localhost:8025.
+4. For Google sign-in, add `https://localhost/auth/google/callback` to the OAuth client's redirect URIs.
+5. Stop it with the same command ending in `down` (add `-v` to also delete its database).
+
+Differences from a real server: dev sign-in is off, Premium is enforced, the stub can't take payments (`PAYMENT_STUB_ALLOW_SUCCESS=true` allows test payments), Telegram linking needs a public URL, and the Kite app's redirect URL must point at `https://localhost/auth/kite/callback` to connect Kite here. Push notifications need the browser to trust Caddy's local certificate.
+
 ## Where data is stored
 
 Everything lives in one SQL database, set by `DATABASE_URL`:

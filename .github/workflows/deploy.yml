@@ -48,6 +48,10 @@ jobs:
         with:
           ref: ${{ steps.meta.outputs.build == 'true' && steps.meta.outputs.sha || inputs.tag }}
 
+      # QEMU lets the x86 runner also build the ARM image (e.g. Oracle Cloud's free Ampere VMs).
+      - uses: docker/setup-qemu-action@v3
+        if: steps.meta.outputs.build == 'true'
+
       - uses: docker/setup-buildx-action@v3
         if: steps.meta.outputs.build == 'true'
 
@@ -62,6 +66,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}

@@ -21,7 +21,7 @@ services:
     image: ${EZT_IMAGE:-eztrading}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     command: ["web"]
-    env_file: .env
+    env_file: ${APP_ENV_FILE:-.env}
     environment:
       ENV: production
       DATABASE_URL: postgresql+psycopg://eztrading:${POSTGRES_PASSWORD}@db:5432/eztrading
@@ -39,7 +39,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    env_file: .env
+    env_file: ${APP_ENV_FILE:-.env}
     environment:
       ENV: production
       DATABASE_URL: postgresql+psycopg://eztrading:${POSTGRES_PASSWORD}@db:5432/eztrading
