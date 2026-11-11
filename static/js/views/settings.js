@@ -17,7 +17,10 @@ function fill(s) {
   $("set-style").innerHTML = styleOptions(s.default_style);
   $("set-push").checked = s.push_enabled;
   $("set-telegram").checked = s.telegram_enabled;
-  $("telegram-state").textContent = s.telegram_linked ? "Connected" : "Not connected";
+  const tgReady = state.config.telegram_enabled;
+  $("telegram-state").textContent = !tgReady ? "Not set up on this server (needs TELEGRAM_BOT_TOKEN)"
+    : s.telegram_linked ? "Connected" : "Not connected";
+  $("set-telegram").disabled = !tgReady;
   $("telegram-unlink").classList.toggle("hidden", !s.telegram_linked);
   if (s.telegram_linked) $("telegram-manual").classList.add("hidden");
   $("telegram-link").classList.toggle("hidden", !state.config.telegram_enabled);

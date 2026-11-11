@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -46,10 +47,22 @@ _ERROR_STATUS: list[tuple[type[EZTradingError], int]] = [
 
 def create_app(container: AppContainer | None = None) -> FastAPI:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    # httpx logs every request URL at INFO, and Telegram URLs contain the bot token: keep those out of logs.
+    for noisy in ("httpx", "httpcore"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     container = container or build_app_container(get_settings())
     settings = container.settings
 
-    app = FastAPI(title="EZTrading", version="2.0.0")
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        poller = _telegram_poller(container)
+        if poller:
+            poller.start()
+        yield
+        if poller:
+            poller.stop()
+
+    app = FastAPI(title="EZTrading", version="2.0.0", lifespan=lifespan)
     app.state.container = container
     app.state.oauth = auth_routes.build_oauth(settings)
     app.add_middleware(
@@ -91,6 +104,19 @@ def create_app(container: AppContainer | None = None) -> FastAPI:
     app.include_router(billing_routes.webhooks)
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
     return app
+
+
+def _telegram_poller(container: AppContainer):
+    """Locally Telegram can't reach the webhook, so fetch the bot's messages instead."""
+    if not container.settings.telegram_uses_polling:
+        return None
+    from app.adapters.notify.telegram_polling import TelegramPoller
+
+    def handle(update: dict) -> None:
+        with container.session_factory() as db:
+            container.telegram_linker(db).handle_update(update)
+
+    return TelegramPoller(container.settings.telegram_bot_token, handle)
 
 
 def __getattr__(name: str):

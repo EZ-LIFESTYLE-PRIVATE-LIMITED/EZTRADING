@@ -32,6 +32,9 @@ jobs:
       VPS_USER: ${{ secrets.VPS_USER }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/eztrading' }}
       DOMAIN: ${{ vars.DOMAIN }}
+      # The server's CPU type. linux/amd64 (Intel/AMD) builds natively in ~1 min; add linux/arm64
+      # (e.g. Oracle Ampere) only when needed: it's emulated on GitHub's x86 runners and takes ~8 min.
+      PLATFORMS: ${{ vars.IMAGE_PLATFORMS || 'linux/amd64' }}
     steps:
       - name: Work out image and tag
         id: meta
@@ -44,13 +47,13 @@ jobs:
           echo "build=$([ -z "$tag" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ steps.meta.outputs.build == 'true' && steps.meta.outputs.sha || inputs.tag }}
 
-      # QEMU lets the x86 runner also build the ARM image (e.g. Oracle Cloud's free Ampere VMs).
+      # QEMU lets the x86 runner build ARM images too.
       - uses: docker/setup-qemu-action@v3
-        if: steps.meta.outputs.build == 'true'
+        if: steps.meta.outputs.build == 'true' && contains(env.PLATFORMS, 'arm64')
 
       - uses: docker/setup-buildx-action@v3
         if: steps.meta.outputs.build == 'true'
@@ -66,7 +69,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PLATFORMS }}
           push: true
           tags: |
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}

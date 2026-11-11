@@ -23,6 +23,7 @@ class Outbox:
 def outbox(env):
     box = Outbox()
     env.container.email_sender = box
+    env.container.settings.fixed_otp = ""  # these tests check real random codes
     return box
 
 

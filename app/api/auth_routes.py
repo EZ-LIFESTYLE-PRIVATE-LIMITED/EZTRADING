@@ -1,4 +1,4 @@
-"""Sign-in (Google SSO / dev login), sign-out and the per-user Kite login flow."""
+"""Sign-in (Google SSO, email + password), sign-out and the per-user Kite login flow."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from app.api.deps import csrf_guard, get_app, get_db, get_services
 from app.config import Settings
 from app.container import AppContainer, UserServices
 from app.domain.errors import BrokerAuthError, ConflictError
-from app.repositories.users import DEV_SUB_PREFIX
 from app.services.password_auth import PasswordAuthService
 
 router = APIRouter(prefix="/auth")
@@ -72,18 +71,6 @@ async def google_callback(request: Request, app: AppContainer = Depends(get_app)
     return RedirectResponse("/")
 
 
-class DevLogin(BaseModel):
-    email: EmailStr
-
-
-@router.post("/dev-login", dependencies=[Depends(csrf_guard)])
-def dev_login(body: DevLogin, request: Request, app: AppContainer = Depends(get_app), db: Session = Depends(get_db)):
-    if not app.settings.dev_login_enabled:
-        raise HTTPException(status_code=404, detail="Not available")
-    _sign_in(request, app, db, f"{DEV_SUB_PREFIX}{body.email}", body.email, body.email.split("@")[0], "")
-    return {"ok": True}
-
-
 # --- email + password (optional) --------------------------------------------------
 class SignupBody(BaseModel):
     name: str = Field(default="", max_length=100)
@@ -115,7 +102,7 @@ def password_service(app: AppContainer = Depends(get_app), db: Session = Depends
     return app.password_auth(db)
 
 
-CODE_SENT = {"next": "verify", "message": "If this email can be used, we've sent it a 6-digit code."}
+CODE_SENT = {"next": "verify", "message": "If this email can be used, we've sent it a code."}
 
 
 @router.post("/signup", dependencies=[Depends(csrf_guard)])
@@ -144,7 +131,7 @@ def login(body: LoginBody, request: Request, app: AppContainer = Depends(get_app
     _check_allowed(app, body.email)
     result = auth.login(body.email, body.password, request.client.host if request.client else "unknown")
     if result.needs_verification:
-        return {"next": "verify", "message": "Confirm your email first. We've sent you a 6-digit code."}
+        return {"next": "verify", "message": "Confirm your email first. We've sent you a code."}
     _start_session(request, result.user_id)
     return {"ok": True}
 
@@ -152,7 +139,7 @@ def login(body: LoginBody, request: Request, app: AppContainer = Depends(get_app
 @router.post("/password/forgot", dependencies=[Depends(csrf_guard)])
 def forgot(body: EmailBody, auth: PasswordAuthService = Depends(password_service)) -> dict:
     auth.forgot(body.email)
-    return {"next": "reset", "message": "If an account uses this email, we've sent it a 6-digit code."}
+    return {"next": "reset", "message": "If an account uses this email, we've sent it a code."}
 
 
 @router.post("/password/reset", dependencies=[Depends(csrf_guard)])

@@ -35,8 +35,9 @@
       </form>
 
       <form id="pw-verify" class="stack hidden">
-        <p class="small">Enter the 6-digit code we emailed to <strong data-email></strong>.</p>
-        <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+        <p class="small">Enter the code we emailed to <strong data-email></strong>.</p>
+        <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" maxlength="8" required></label>
+        <p class="small muted hidden" data-fixed-otp></p>
         <button class="btn btn-block" type="submit">Confirm</button>
         <p class="row space small"><a href="#" data-resend>Send a new code</a><a href="#" data-go="signin">Back</a></p>
       </form>
@@ -50,18 +51,14 @@
 
       <form id="pw-reset" class="stack hidden">
         <p class="small">Enter the code we emailed to <strong data-email></strong> and choose a new password.</p>
-        <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+        <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" maxlength="8" required></label>
+        <p class="small muted hidden" data-fixed-otp></p>
         <label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
         <button class="btn btn-block" type="submit">Set password and sign in</button>
         <p class="small"><a href="#" data-go="signin">Back to sign in</a></p>
       </form>
     </div>
 
-    <form id="dev-form" class="hidden stack">
-      <label class="small muted" for="dev-email">Development sign-in (no password)</label>
-      <input id="dev-email" type="email" placeholder="you@example.com" required>
-      <button class="btn btn-secondary btn-block" type="submit">Dev sign-in</button>
-    </form>
     <p id="no-auth" class="muted small hidden">Sign-in is not configured. Set the Google OAuth or SMTP settings on the server.</p>
     <p class="disclaimer small">Informational decision support only, not investment advice.</p>
   </main>

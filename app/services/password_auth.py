@@ -124,7 +124,7 @@ class PasswordAuthService:
             if enforce_cooldown:
                 raise RateLimitedError("A code was just sent. Wait a minute before asking for another.")
             return  # a fresh code is already on its way
-        code = new_otp()
+        code = self._settings.otp_override or new_otp()
         self._otps.put(email, purpose, hash_otp(self._settings.session_secret, email, purpose, code), now + OTP_TTL,
                        now)
         what = "confirm your email" if purpose == SIGNUP else "reset your password"

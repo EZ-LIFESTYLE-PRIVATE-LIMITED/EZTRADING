@@ -43,4 +43,5 @@ def run_migrations(url: str) -> None:
     cfg = Config(str(root / "alembic.ini"))
     cfg.set_main_option("script_location", str(root / "migrations"))
     cfg.set_main_option("sqlalchemy.url", url)
+    cfg.attributes["configure_logger"] = False  # keep the app's logging (alembic.ini would set root to WARN)
     command.upgrade(cfg, "head")

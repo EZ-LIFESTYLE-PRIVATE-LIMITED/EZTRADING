@@ -96,19 +96,14 @@ async function init() {
   $("google-btn").classList.toggle("hidden", !config.google_enabled);
   $("pw-auth").classList.toggle("hidden", !config.password_login);
   $("or-divider").classList.toggle("hidden", !(config.google_enabled && config.password_login));
-  $("dev-form").classList.toggle("hidden", !config.dev_login);
-  $("no-auth").classList.toggle("hidden", config.google_enabled || config.dev_login || config.password_login);
+  $("no-auth").classList.toggle("hidden", config.google_enabled || config.password_login);
   if (config.password_login) initPasswordForms();
-
-  $("dev-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      await post("/auth/dev-login", { email: $("dev-email").value });
-      location.href = "/";
-    } catch (ex) {
-      message(ex.message);
-    }
-  });
+  if (config.fixed_otp) {  // local/test servers only: no inbox needed
+    document.querySelectorAll("[data-fixed-otp]").forEach((el) => {
+      el.textContent = `Local server: the code is always ${config.fixed_otp}.`;
+      el.classList.remove("hidden");
+    });
+  }
 }
 
 init();

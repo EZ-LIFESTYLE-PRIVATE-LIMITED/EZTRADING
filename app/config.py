@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     session_secret: str = "dev-insecure-session-secret-change-me"
     app_encryption_key: str = ""  # Fernet key; required in production
     allowed_emails: str = ""      # optional comma-separated allowlist
-    dev_login: bool = False       # passwordless sign-in, development only
+    fixed_otp: str = "7891"       # outside production every email code is this (no inbox needed locally)
 
     # --- Google SSO ---------------------------------------------------------
     google_client_id: str = ""
@@ -90,9 +90,10 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
     telegram_webhook_secret: str = ""
+    telegram_polling: bool | None = None  # receive bot messages by polling; default: outside production only
 
     # --- Premium & billing ----------------------------------------------------
-    premium_enforced: bool | None = None  # None = enforced in production only
+    premium_enforced: bool = True  # server AI keys need Premium (locally too; test payments succeed there)
     premium_plan: str = "premium_monthly"
     premium_price_inr: int = 199
     premium_period_days: int = 30
@@ -121,8 +122,9 @@ class Settings(BaseSettings):
         return self.env.lower() == "production"
 
     @property
-    def dev_login_enabled(self) -> bool:
-        return self.dev_login and not self.is_production
+    def otp_override(self) -> str:
+        """The fixed email code used outside production; never in production."""
+        return "" if self.is_production else self.fixed_otp.strip()
 
     @property
     def google_enabled(self) -> bool:
@@ -130,7 +132,7 @@ class Settings(BaseSettings):
 
     @property
     def premium_required(self) -> bool:
-        return self.is_production if self.premium_enforced is None else self.premium_enforced
+        return self.premium_enforced
 
     @property
     def new_user_advisor(self) -> str:
@@ -157,6 +159,12 @@ class Settings(BaseSettings):
     @property
     def telegram_enabled(self) -> bool:
         return bool(self.telegram_bot_token and self.telegram_bot_username)
+
+    @property
+    def telegram_uses_polling(self) -> bool:
+        if not self.telegram_enabled:
+            return False
+        return (not self.is_production) if self.telegram_polling is None else self.telegram_polling
 
     @property
     def watchlist_symbols(self) -> list[str]:

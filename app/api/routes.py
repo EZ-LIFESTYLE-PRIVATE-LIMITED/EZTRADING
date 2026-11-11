@@ -34,7 +34,7 @@ def public_config(app: AppContainer = Depends(get_app)) -> dict:
     s = app.settings
     return {
         "google_enabled": s.google_enabled,
-        "dev_login": s.dev_login_enabled,
+        "fixed_otp": s.otp_override or None,  # shown on the login page outside production
         "password_login": s.password_login_enabled,
         "push_public_key": s.vapid_public_key if s.push_enabled else None,
         "telegram_enabled": s.telegram_enabled,

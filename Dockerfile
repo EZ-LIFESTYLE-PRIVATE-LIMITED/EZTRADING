@@ -1,20 +1,23 @@
+# syntax=docker/dockerfile:1.7
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
+    PYTHONFAULTHANDLER=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
+# Dependencies first: this layer is reused until requirements.txt changes.
+# The cache mount keeps downloaded wheels between local rebuilds without baking them into the image.
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
 
-COPY app ./app
-COPY static ./static
+COPY alembic.ini entrypoint.sh ./
 COPY migrations ./migrations
 COPY scripts ./scripts
-COPY alembic.ini entrypoint.sh ./
+COPY app ./app
+COPY static ./static
 RUN chmod +x entrypoint.sh \
     && useradd --create-home --uid 10001 ezt \
     && mkdir -p /app/data && chown -R ezt /app/data
