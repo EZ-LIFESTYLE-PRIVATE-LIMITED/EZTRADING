@@ -11,6 +11,9 @@
   function apply(choice) {
     var dark = choice === "dark" || (choice === "system" && media.matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
+    // Keep the browser / Android status bar in step with the top bar (--card).
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", dark ? "#1a1d23" : "#ffffff");
   }
 
   window.eztTheme = {

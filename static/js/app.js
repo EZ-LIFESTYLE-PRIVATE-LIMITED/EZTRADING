@@ -6,6 +6,7 @@ import { initPortfolio, loadWallet } from "./views/portfolio.js";
 import { initPlan, loadOrders, loadPlan, renderStylePicker } from "./views/plan.js";
 import { initIpo, loadIpos } from "./views/ipo.js";
 import { initSettings, openSettings } from "./views/settings.js";
+import { initInstall } from "./install.js";
 
 setErrorHandler((e) => {
   if (e.kiteLoginRequired) loadStatus().catch(() => {});
@@ -126,6 +127,7 @@ function handleKiteRedirect() {
 // --- boot -----------------------------------------------------------------------
 async function init() {
   initChrome();
+  initInstall();
   initPortfolio();
   initPlan();
   initIpo();

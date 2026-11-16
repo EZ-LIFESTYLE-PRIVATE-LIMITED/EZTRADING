@@ -163,14 +163,14 @@ export async function loadOrders() {
   $("orders-body").innerHTML = orders.length
     ? orders.map((o) => `
       <tr>
-        <td>${new Date(o.created_at + "Z").toLocaleString()}</td>
-        <td>${esc(o.symbol)}</td>
-        <td>${o.side} <span class="small muted">${o.product}</span></td>
-        <td class="num">${o.quantity}</td>
-        <td>${o.order_type}</td>
-        <td class="num">${o.price ? num(o.price) : "MKT"}</td>
-        <td title="${esc(o.error || "")}"><span class="status-badge ${o.status === "FAILED" || o.status === "REJECTED" ? "failed" : "executed"}">${esc(o.status)}</span></td>
-        <td class="small">${esc(o.broker_order_id || "—")}</td>
+        <td data-label="Time">${new Date(o.created_at + "Z").toLocaleString()}</td>
+        <td class="cell-head">${esc(o.symbol)}</td>
+        <td data-label="Side">${o.side} <span class="small muted">${o.product}</span></td>
+        <td class="num" data-label="Qty">${o.quantity}</td>
+        <td data-label="Type">${o.order_type}</td>
+        <td class="num" data-label="Price">${o.price ? num(o.price) : "MKT"}</td>
+        <td data-label="Status" title="${esc(o.error || "")}"><span class="status-badge ${o.status === "FAILED" || o.status === "REJECTED" ? "failed" : "executed"}">${esc(o.status)}</span></td>
+        <td class="small cell-wide" data-label="Kite order id">${esc(o.broker_order_id || "—")}</td>
       </tr>`).join("")
     : `<tr><td colspan="8" class="muted">No orders yet.</td></tr>`;
 }

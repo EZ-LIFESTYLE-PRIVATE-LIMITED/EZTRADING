@@ -10,13 +10,13 @@ function renderHoldings(p) {
   $("holdings-body").innerHTML = p.holdings.length
     ? p.holdings.map((h) => `
       <tr>
-        <td>${esc(h.symbol)}</td>
-        <td class="num">${h.quantity}</td>
-        <td class="num">${h.average_price.toFixed(2)}</td>
-        <td class="num">${h.last_price.toFixed(2)}</td>
-        <td class="num">${money(h.current_value)}</td>
-        <td class="num ${signClass(h.pnl)}">${money(h.pnl)}<br><small>${pct(h.pnl_pct)}</small></td>
-        <td class="num ${signClass(h.day_change_pct)}">${pct(h.day_change_pct)}</td>
+        <td class="cell-head">${esc(h.symbol)}</td>
+        <td class="num" data-label="Qty">${h.quantity}</td>
+        <td class="num" data-label="Avg">${h.average_price.toFixed(2)}</td>
+        <td class="num" data-label="LTP">${h.last_price.toFixed(2)}</td>
+        <td class="num" data-label="Value">${money(h.current_value)}</td>
+        <td class="num ${signClass(h.pnl)}" data-label="P&amp;L">${money(h.pnl)}<br><small>${pct(h.pnl_pct)}</small></td>
+        <td class="num ${signClass(h.day_change_pct)}" data-label="Day">${pct(h.day_change_pct)}</td>
       </tr>`).join("")
     : `<tr><td colspan="7" class="muted">No holdings.</td></tr>`;
   $("holdings-time").textContent = `Updated ${new Date(p.fetched_at).toLocaleTimeString()}`;

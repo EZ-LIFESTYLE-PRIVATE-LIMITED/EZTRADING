@@ -91,6 +91,11 @@ class Settings(BaseSettings):
     telegram_bot_username: str = ""
     telegram_webhook_secret: str = ""
 
+    # --- Android app (Trusted Web Activity) ----------------------------------
+    # Served at /.well-known/assetlinks.json so the app opens full-screen without a URL bar.
+    twa_package_name: str = ""
+    twa_sha256_fingerprints: str = ""  # comma-separated "AA:BB:..." signing-cert fingerprints
+
     # --- Premium & billing ----------------------------------------------------
     premium_enforced: bool | None = None  # None = enforced in production only
     premium_plan: str = "premium_monthly"
@@ -157,6 +162,10 @@ class Settings(BaseSettings):
     @property
     def telegram_enabled(self) -> bool:
         return bool(self.telegram_bot_token and self.telegram_bot_username)
+
+    @property
+    def twa_fingerprints(self) -> list[str]:
+        return _split_csv(self.twa_sha256_fingerprints, upper=True)
 
     @property
     def watchlist_symbols(self) -> list[str]:
