@@ -65,6 +65,56 @@ it sign them:
 3. Check each of these: Google sign-in, Connect Kite (it opens kite.zerodha.com and returns), and
    Settings → Notifications → Browser push → Send test notification.
 
+## Testing against a local dev server (emulator)
+
+Use a Google APIs or Play Store emulator image, since those include Chrome. Chrome treats
+`http://localhost` as a secure origin, so the service worker and push work here too:
+
+```bash
+adb reverse tcp:8000 tcp:8000          # emulator 127.0.0.1:8000 -> your PC's port 8000
+./gradlew installDebug -PtwaHost=127.0.0.1:8000 -PtwaScheme=http
+```
+
+In PowerShell, quote the arguments (`'-PtwaHost=127.0.0.1:8000'`). Otherwise PowerShell splits them.
+
+**The app's host must match the server's `PUBLIC_BASE_URL`**, which defaults to `http://127.0.0.1:8000`.
+The Google and Kite callbacks return to `PUBLIC_BASE_URL`. If the app runs on a different
+origin, such as `localhost` or `127.0.0.1`, the session cookie is missing and the callback fails.
+
+What to expect locally:
+
+- **URL bar:** shown, because a local origin can't pass asset-link verification. To hide it on an
+  emulator, have Chrome skip verification for that origin. This affects that emulator only:
+  ```bash
+  adb shell am set-debug-app --persistent com.android.chrome
+  adb shell "echo '_ --disable-digital-asset-link-verification-for-url=\"http://127.0.0.1:8000\"' > /data/local/tmp/chrome-command-line"
+  adb shell am force-stop com.android.chrome
+  ```
+- **Push:** set `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (from `python scripts/gen_keys.py`). Notifications show as
+  coming from *Chrome*. With a verified production domain they show as *EZTrading* instead.
+- **Google sign-in:** the button appears only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. Also
+  add `<PUBLIC_BASE_URL>/auth/google/callback` to the OAuth client's authorized redirect URIs. `LOGIN_METHODS`
+  chooses what the login page offers: `google` for the real app, or `dev` for a sandbox.
+- **Kite:** the Kite developer app's redirect URL must be `<PUBLIC_BASE_URL>/auth/kite/callback`. Settings in
+  the app shows the exact value.
+
+If `adb devices` shows `authorizing` or `offline`, cold-boot the emulator (Device Manager → ⋮ →
+Cold Boot Now).
+
+## How sign-in and Kite work in the app
+
+The app *is* the website, running in Chrome, so it shares Chrome's cookies, and every redirect
+flow is the same as on the web:
+
+- **Google sign-in:** the app goes to accounts.google.com inside the same Chrome tab, which shows a
+  small toolbar while off-site, then returns to `/auth/google/callback`. Google allows this
+  because it's Chrome, not a WebView.
+- **Kite:** **one Kite redirect URL serves both web and Android**:
+  `https://<your domain>/auth/kite/callback`. The app opens kite.zerodha.com, Kite redirects back
+  to that URL, and the app lands on `/?kite=connected`. If Android hands that link to the app
+  through the App Links filter, `LauncherActivity` reopens it in the same Chrome session, so the
+  login still completes.
+
 ## Icons
 
 `python scripts/make_icons.py` (needs Pillow) regenerates the launcher, splash and notification

@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     app_encryption_key: str = ""  # Fernet key; required in production
     allowed_emails: str = ""      # optional comma-separated allowlist
     dev_login: bool = False       # passwordless sign-in, development only
+    # Which sign-in options the login page offers, e.g. "google", "google,password" or "dev" (sandbox).
+    # Empty = legacy behaviour: Google when its keys are set, PASSWORD_LOGIN, and DEV_LOGIN outside production.
+    login_methods: str = ""
 
     # --- Google SSO ---------------------------------------------------------
     google_client_id: str = ""
@@ -126,12 +129,41 @@ class Settings(BaseSettings):
         return self.env.lower() == "production"
 
     @property
+    def login_method_set(self) -> set[str] | None:
+        """The LOGIN_METHODS list, or None when unset (fall back to the individual switches)."""
+        methods = {m.lower() for m in _split_csv(self.login_methods)}
+        return methods or None
+
+    def _login_allowed(self, method: str, legacy: bool) -> bool:
+        methods = self.login_method_set
+        return legacy if methods is None else method in methods
+
+    @property
     def dev_login_enabled(self) -> bool:
-        return self.dev_login and not self.is_production
+        # In production (e.g. a sandbox deployment) dev sign-in also needs ALLOWED_EMAILS, so a copied
+        # sandbox config can never open passwordless sign-in to everyone.
+        if self.is_production:
+            return self.login_method_set is not None and "dev" in self.login_method_set and bool(self.allowed_email_set)
+        return self._login_allowed("dev", self.dev_login)
+
+    @property
+    def google_configured(self) -> bool:
+        return bool(self.google_client_id and self.google_client_secret)
 
     @property
     def google_enabled(self) -> bool:
-        return bool(self.google_client_id and self.google_client_secret)
+        return self.google_configured and self._login_allowed("google", True)
+
+    def login_config_warnings(self) -> list[str]:
+        methods = self.login_method_set or set()
+        warnings = [f"LOGIN_METHODS has unknown entries: {sorted(methods - {'google', 'password', 'dev'})}"]             if methods - {"google", "password", "dev"} else []
+        if "google" in methods and not self.google_configured:
+            warnings.append("LOGIN_METHODS includes google but GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set")
+        if "dev" in methods and self.is_production and not self.allowed_email_set:
+            warnings.append("LOGIN_METHODS includes dev but ALLOWED_EMAILS is empty; dev sign-in stays off in production")
+        if "dev" in methods and self.dev_login_enabled and self.is_production:
+            warnings.append("Dev sign-in (no password) is ON in production for ALLOWED_EMAILS; use for sandboxes only")
+        return warnings
 
     @property
     def premium_required(self) -> bool:
@@ -153,7 +185,7 @@ class Settings(BaseSettings):
     @property
     def password_login_enabled(self) -> bool:
         """Needs a way to deliver OTPs: real SMTP, or the console in development."""
-        return self.password_login and (self.smtp_configured or not self.is_production)
+        return self._login_allowed("password", self.password_login) and (self.smtp_configured or not self.is_production)
 
     @property
     def push_enabled(self) -> bool:

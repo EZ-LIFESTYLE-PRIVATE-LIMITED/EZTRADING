@@ -4,7 +4,11 @@ plugins {
     id("com.android.application")
 }
 
+// twaHost may carry a port for local testing ("localhost:8000"); twaScheme=http only for that case
+// (Chrome treats http://localhost as a secure origin, so the service worker and push still work).
 val twaHost: String = providers.gradleProperty("twaHost").get()
+val twaScheme: String = providers.gradleProperty("twaScheme").orNull ?: "https"
+val twaOrigin = "$twaScheme://$twaHost"
 
 android {
     namespace = "in.eztrading.app"
@@ -17,14 +21,14 @@ android {
         versionCode = (providers.gradleProperty("versionCode").orNull ?: "1").toInt()
         versionName = providers.gradleProperty("versionName").orNull ?: "1.0.0"
 
-        manifestPlaceholders["hostName"] = twaHost
-        resValue("string", "launchUrl", "https://$twaHost/?source=twa")
-        resValue("string", "webManifestUrl", "https://$twaHost/manifest.webmanifest")
+        manifestPlaceholders["hostName"] = twaHost.substringBefore(":")  // intent-filter host: no port
+        resValue("string", "launchUrl", "$twaOrigin/?source=twa")
+        resValue("string", "webManifestUrl", "$twaOrigin/manifest.webmanifest")
         resValue("string", "providerAuthority", "in.eztrading.app.fileprovider")
         // Pairs with /.well-known/assetlinks.json on the site (TWA_PACKAGE_NAME / TWA_SHA256_FINGERPRINTS).
         resValue(
             "string", "assetStatements",
-            """[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://$twaHost\"}}]""",
+            """[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"$twaOrigin\"}}]""",
         )
     }
 

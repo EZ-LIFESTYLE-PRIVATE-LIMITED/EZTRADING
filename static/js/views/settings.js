@@ -16,11 +16,14 @@ function fill(s) {
   $("ai-premium-note").classList.toggle("hidden", s.server_keys_allowed || !s.server_keys.length);
   $("set-style").innerHTML = styleOptions(s.default_style);
   $("set-push").checked = s.push_enabled;
-  $("set-telegram").checked = s.telegram_enabled;
-  $("telegram-state").textContent = s.telegram_linked ? "Connected" : "Not connected";
-  $("telegram-unlink").classList.toggle("hidden", !s.telegram_linked);
-  if (s.telegram_linked) $("telegram-manual").classList.add("hidden");
-  $("telegram-link").classList.toggle("hidden", !state.config.telegram_enabled);
+  const telegramReady = state.config.telegram_enabled;  // the server has a bot configured
+  $("set-telegram").checked = telegramReady && s.telegram_enabled;
+  $("set-telegram").disabled = !telegramReady;
+  $("telegram-state").textContent = !telegramReady ? "Not configured on the server"
+    : s.telegram_linked ? "Connected" : "Not connected";
+  $("telegram-unlink").classList.toggle("hidden", !telegramReady || !s.telegram_linked);
+  if (s.telegram_linked || !telegramReady) $("telegram-manual").classList.add("hidden");
+  $("telegram-link").classList.toggle("hidden", !telegramReady || s.telegram_linked);
   syncPushState();
 }
 

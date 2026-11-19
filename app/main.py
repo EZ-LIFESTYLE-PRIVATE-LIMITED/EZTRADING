@@ -48,6 +48,8 @@ def create_app(container: AppContainer | None = None) -> FastAPI:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     container = container or build_app_container(get_settings())
     settings = container.settings
+    for warning in settings.login_config_warnings():
+        log.warning("Sign-in config: %s", warning)
 
     app = FastAPI(title="EZTrading", version="2.0.0")
     app.state.container = container
