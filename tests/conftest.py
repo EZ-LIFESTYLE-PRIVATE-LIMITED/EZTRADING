@@ -28,7 +28,12 @@ class Env:
 
     def client(self, email: str = "a@example.com") -> TestClient:
         c = TestClient(create_app(self.container), headers={"X-Requested-With": "fetch"})
-        r = c.post("/auth/dev-login", json={"email": email})
+        """A signed-in user, onboarded like a real one: sign up, then confirm with the fixed local code."""
+        r = c.post("/auth/signup", json={"email": email, "password": "test-password-1", "name": ""})
+        assert r.status_code == 200, r.text
+        r = c.post("/auth/verify", json={"email": email, "code": self.container.settings.fixed_otp})
+        if r.status_code != 200:  # already registered: sign in instead
+            r = c.post("/auth/login", json={"email": email, "password": "test-password-1"})
         assert r.status_code == 200, r.text
         return c
 
@@ -43,10 +48,10 @@ def default_holdings() -> list[Holding]:
 @pytest.fixture
 def settings() -> Settings:
     return Settings(
-        _env_file=None, env="development", dev_login=True, broker="fake", watchlist="ITC,TCS",
+        _env_file=None, env="development", broker="fake", watchlist="ITC,TCS",
         gemini_api_key="server-gemini-key", default_advisor="gemini:gemini-3.6-flash",
         telegram_bot_token="t", telegram_bot_username="ezt_bot", telegram_webhook_secret="hook-secret",
-        manual_analyze_cooldown_seconds=0,
+        manual_analyze_cooldown_seconds=0, premium_enforced=False, telegram_polling=False,
     )
 
 

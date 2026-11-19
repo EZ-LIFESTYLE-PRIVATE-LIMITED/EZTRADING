@@ -96,3 +96,16 @@ def test_kite_reconnect_notified_once_a_day(env):
         assert services.notifications.kite_reconnect() == []
         env.clock.now = datetime(2026, 11, 12, 4, 30)
         assert services.notifications.kite_reconnect() == ["push"]
+
+
+def test_local_polling_links_telegram_without_webhook(env):
+    from app.main import _telegram_poller
+
+    assert _telegram_poller(env.container) is None  # off in tests / when TELEGRAM_POLLING=false
+    env.container.settings.telegram_polling = True
+    poller = _telegram_poller(env.container)
+    c = env.client()
+    code = c.post("/api/telegram/link").json()["url"].split("start=")[1]
+    poller._dispatch({"update_id": 1, "message": {"text": f"/start {code}", "chat": {"id": 777}}})
+    assert c.get("/api/settings").json()["telegram_linked"] is True
+    poller._dispatch({"update_id": 2})  # unrelated updates are ignored, never raised

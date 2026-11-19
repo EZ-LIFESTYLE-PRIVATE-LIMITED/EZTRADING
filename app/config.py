@@ -53,9 +53,10 @@ class Settings(BaseSettings):
     session_secret: str = "dev-insecure-session-secret-change-me"
     app_encryption_key: str = ""  # Fernet key; required in production
     allowed_emails: str = ""      # optional comma-separated allowlist
-    dev_login: bool = False       # passwordless sign-in, development only
-    # Which sign-in options the login page offers, e.g. "google", "google,password" or "dev" (sandbox).
-    # Empty = legacy behaviour: Google when its keys are set, PASSWORD_LOGIN, and DEV_LOGIN outside production.
+    fixed_otp: str = "7891"       # outside production every email code is this (no inbox needed locally)
+    # Which sign-in options the login page offers: "google", "password" (email + emailed code) and "dev"
+    # (email sign-in where the code is always FIXED_OTP, for sandboxes). E.g. "google" live, "dev" sandbox.
+    # Empty = Google when its keys are set, plus PASSWORD_LOGIN.
     login_methods: str = ""
 
     # --- Google SSO ---------------------------------------------------------
@@ -93,6 +94,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_bot_username: str = ""
     telegram_webhook_secret: str = ""
+    telegram_polling: bool | None = None  # receive bot messages by polling; default: outside production only
 
     # --- Android app (Trusted Web Activity) ----------------------------------
     # Served at /.well-known/assetlinks.json so the app opens full-screen without a URL bar.
@@ -100,7 +102,7 @@ class Settings(BaseSettings):
     twa_sha256_fingerprints: str = ""  # comma-separated "AA:BB:..." signing-cert fingerprints
 
     # --- Premium & billing ----------------------------------------------------
-    premium_enforced: bool | None = None  # None = enforced in production only
+    premium_enforced: bool = True  # server AI keys need Premium (locally too; test payments succeed there)
     premium_plan: str = "premium_monthly"
     premium_price_inr: int = 199
     premium_period_days: int = 30
@@ -140,11 +142,21 @@ class Settings(BaseSettings):
 
     @property
     def dev_login_enabled(self) -> bool:
-        # In production (e.g. a sandbox deployment) dev sign-in also needs ALLOWED_EMAILS, so a copied
-        # sandbox config can never open passwordless sign-in to everyone.
-        if self.is_production:
-            return self.login_method_set is not None and "dev" in self.login_method_set and bool(self.allowed_email_set)
-        return self._login_allowed("dev", self.dev_login)
+        """Sandbox sign-in: email codes are always FIXED_OTP, no inbox needed.
+
+        Always on outside production. In production (a sandbox deployment) it needs "dev" in LOGIN_METHODS
+        and a non-empty ALLOWED_EMAILS, so a copied sandbox config can never open sign-in to everyone.
+        """
+        if not self.fixed_otp.strip():
+            return False
+        if not self.is_production:
+            return True
+        return "dev" in (self.login_method_set or set()) and bool(self.allowed_email_set)
+
+    @property
+    def otp_override(self) -> str:
+        """The fixed email code, when dev (sandbox) sign-in is on; otherwise empty (real random codes)."""
+        return self.fixed_otp.strip() if self.dev_login_enabled else ""
 
     @property
     def google_configured(self) -> bool:
@@ -161,13 +173,14 @@ class Settings(BaseSettings):
             warnings.append("LOGIN_METHODS includes google but GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set")
         if "dev" in methods and self.is_production and not self.allowed_email_set:
             warnings.append("LOGIN_METHODS includes dev but ALLOWED_EMAILS is empty; dev sign-in stays off in production")
-        if "dev" in methods and self.dev_login_enabled and self.is_production:
-            warnings.append("Dev sign-in (no password) is ON in production for ALLOWED_EMAILS; use for sandboxes only")
+        if self.dev_login_enabled and self.is_production:
+            warnings.append("Dev sign-in (fixed email code FIXED_OTP) is ON in production for ALLOWED_EMAILS; "
+                            "use for sandboxes only")
         return warnings
 
     @property
     def premium_required(self) -> bool:
-        return self.is_production if self.premium_enforced is None else self.premium_enforced
+        return self.premium_enforced
 
     @property
     def new_user_advisor(self) -> str:
@@ -184,8 +197,10 @@ class Settings(BaseSettings):
 
     @property
     def password_login_enabled(self) -> bool:
-        """Needs a way to deliver OTPs: real SMTP, or the console in development."""
-        return self._login_allowed("password", self.password_login) and (self.smtp_configured or not self.is_production)
+        """Email sign-in. Needs a way to deliver codes: real SMTP, the console in development, or the fixed
+        code (dev / sandbox)."""
+        wanted = self._login_allowed("password", self.password_login) or "dev" in (self.login_method_set or set())
+        return wanted and (self.smtp_configured or not self.is_production or self.dev_login_enabled)
 
     @property
     def push_enabled(self) -> bool:
@@ -194,6 +209,12 @@ class Settings(BaseSettings):
     @property
     def telegram_enabled(self) -> bool:
         return bool(self.telegram_bot_token and self.telegram_bot_username)
+
+    @property
+    def telegram_uses_polling(self) -> bool:
+        if not self.telegram_enabled:
+            return False
+        return (not self.is_production) if self.telegram_polling is None else self.telegram_polling
 
     @property
     def twa_fingerprints(self) -> list[str]:

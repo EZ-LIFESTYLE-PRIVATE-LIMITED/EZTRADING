@@ -94,7 +94,8 @@ What to expect locally:
   coming from *Chrome*. With a verified production domain they show as *EZTrading* instead.
 - **Google sign-in:** the button appears only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. Also
   add `<PUBLIC_BASE_URL>/auth/google/callback` to the OAuth client's authorized redirect URIs. `LOGIN_METHODS`
-  chooses what the login page offers: `google` for the real app, or `dev` for a sandbox.
+  chooses what the login page offers: `google` for the real app, or `dev` for a sandbox (email sign-in
+  where the code is always `FIXED_OTP`, 7891).
 - **Kite:** the Kite developer app's redirect URL must be `<PUBLIC_BASE_URL>/auth/kite/callback`. Settings in
   the app shows the exact value.
 

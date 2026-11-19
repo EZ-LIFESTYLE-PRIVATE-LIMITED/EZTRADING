@@ -19,7 +19,7 @@ function fill(s) {
   const telegramReady = state.config.telegram_enabled;  // the server has a bot configured
   $("set-telegram").checked = telegramReady && s.telegram_enabled;
   $("set-telegram").disabled = !telegramReady;
-  $("telegram-state").textContent = !telegramReady ? "Not configured on the server"
+  $("telegram-state").textContent = !telegramReady ? "Not set up on this server (needs TELEGRAM_BOT_TOKEN)"
     : s.telegram_linked ? "Connected" : "Not connected";
   $("telegram-unlink").classList.toggle("hidden", !telegramReady || !s.telegram_linked);
   if (s.telegram_linked || !telegramReady) $("telegram-manual").classList.add("hidden");

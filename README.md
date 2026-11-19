@@ -9,7 +9,7 @@ Users can **Execute** a suggestion after confirming it, or **Ignore** it. EZTrad
 ## Features
 | | |
 |---|---|
-| Sign-in | Google SSO, and optionally email + password with a 6-digit email code (sign-up confirmation and password reset). A passwordless dev login exists in local development only. Each user's data is isolated. |
+| Sign-in | Google SSO, and optionally email + password with an email code (sign-up confirmation and password reset). Local servers use the same sign-up flow with a fixed code, `7891`. Each user's data is isolated. |
 | Premium | ₹199 / 30 days (configurable). Premium unlocks the server's Gemini/Claude keys; free users use Rules or their own AI key. Coupons: percent off, flat off, or free days (`FREE7` = 7 free days, once per user). Payment providers plug in behind one interface; a stub stands in until one is chosen. |
 | Kite | Each user saves their own Kite API key and secret in **Settings** (encrypted at rest), then clicks **Connect Kite** once a day. |
 | Advisor dropdown | Gemini 3.6/3.8 Flash, Claude Opus/Sonnet 5.5, or Rules. Uses the user's own API key if saved, otherwise the server's. |
@@ -26,34 +26,20 @@ Users can **Execute** a suggestion after confirming it, or **Ignore** it. EZTrad
 python -m venv .venv
 .venv\Scripts\activate            # Windows  (source .venv/bin/activate on macOS/Linux)
 pip install -r requirements.txt
-copy .env.example .env            # DEV_LOGIN=true is already set
+copy .env.example .env
 uvicorn app.main:app --port 8000
 ```
 
-Open http://127.0.0.1:8000 and use **Dev sign-in**. The SQLite database and migrations are created automatically in development.
+Open http://localhost:8000 and **create an account** with any email: outside production the email code is always **7891**, so no inbox is needed. Everything else works as in production. The SQLite database and migrations are created automatically in development.
 
 - **Demo data:** set `BROKER=fake` and `IPO_SOURCE=fake` to use sample holdings and IPOs, so no Kite account is needed. For an AI-free demo, pick **Rules** in the advisor dropdown.
 - **Auto-analysis:** run the worker in a second terminal with `python -m app.worker`.
 - **Tests:** run `pytest -q`.
-- **Telegram locally:** put `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (without `@`) and `TELEGRAM_WEBHOOK_SECRET` in `.env` and restart. Telegram can't reach `127.0.0.1`, so while you link a chat, run a temporary tunnel (`cloudflared tunnel --url http://127.0.0.1:8000`) and register `https://<tunnel>/telegram/webhook` with `setWebhook` (see Deploy step 6). Then use **Settings → Connect Telegram**: send the `/start <code>` it shows to the bot (codes last 15 minutes). After linking, stop the tunnel; messages are sent without it. Keep the tunnel short-lived, because dev sign-in is reachable through it.
-- **Email + password locally:** works without SMTP. The 6-digit codes are printed in the server terminal (`EMAIL (dev, not sent)`). Set the `SMTP_*` values to send real email.
-- **Premium locally:** not enforced in development, so everyone can use the server's AI keys. Set `PREMIUM_ENFORCED=true` to test the paywall; the stub's test payment page then works, and `FREE7` gives 7 days. Manage coupons with `python -m scripts.coupons list|add|disable`.
-- **Google sign-in locally:** create the OAuth client described under Deploy, but add `http://127.0.0.1:8000/auth/google/callback` as an authorized redirect URI. Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env` and restart. Signing in with Google using the same email as a dev-login account takes that account over, keeping its keys, wallet and plans.
-
-## Production-like test on your PC
-
-Runs the real production setup (`ENV=production`, Postgres, worker, Caddy HTTPS) at **https://localhost**, plus [Mailpit](https://mailpit.axllent.org/) to catch sign-up and reset emails.
-
-1. Create `.env.prodlocal` (git-ignored) with `APP_ENV_FILE=.env.prodlocal`, `DOMAIN=localhost`, `PUBLIC_BASE_URL=https://localhost`, a `POSTGRES_PASSWORD`, the output of `python scripts/gen_keys.py`, your Google/AI keys, and `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_STARTTLS=false`, `SMTP_FROM=...`. Set `ORDERS_ENABLED=false` while testing.
-2. Start it:
-   ```bash
-   docker compose -p eztrading-local --env-file .env.prodlocal -f docker-compose.yml -f docker-compose.local.yml up -d --build
-   ```
-3. Open https://localhost. Caddy uses its own local certificate, so the browser warns once; continue anyway. Emails (codes) arrive at http://localhost:8025.
-4. For Google sign-in, add `https://localhost/auth/google/callback` to the OAuth client's redirect URIs.
-5. Stop it with the same command ending in `down` (add `-v` to also delete its database).
-
-Differences from a real server: dev sign-in is off, Premium is enforced, the stub can't take payments (`PAYMENT_STUB_ALLOW_SUCCESS=true` allows test payments), Telegram linking needs a public URL, and the Kite app's redirect URL must point at `https://localhost/auth/kite/callback` to connect Kite here. Push notifications need the browser to trust Caddy's local certificate.
+- **Telegram locally:** put `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (without `@`) and `TELEGRAM_WEBHOOK_SECRET` in `.env` and restart. Outside production the server **polls** Telegram for the bot's messages, so no public URL or tunnel is needed: use **Settings → Connect Telegram** and send the `/start <code>` it shows. A bot can't be polled while a webhook is set, so **use a separate bot for local development** from the production one (whose webhook points at your domain).
+- **Push locally:** works on `http://localhost:8000` (browsers treat localhost as secure). Don't put a self-signed HTTPS proxy in front of it: service workers refuse untrusted certificates.
+- **Premium locally:** enforced as in production. Buy it from the Premium page: the test payment page succeeds outside production (no money moves), or use coupon `FREE7`. `PREMIUM_ENFORCED=false` turns the paywall off. Manage coupons with `python -m scripts.coupons list|add|disable`.
+- **Existing accounts from the old dev login:** sign in with Google using the same email, or use **Forgot password** (code `7891`) to set a password. Keys, wallet and plans are kept.
+- **Google sign-in locally:** create the OAuth client described under Deploy, but add `http://127.0.0.1:8000/auth/google/callback` as an authorized redirect URI. Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env` and restart. Add `http://localhost:8000/auth/google/callback` too if you open the app via `localhost`.
 
 ## Where data is stored
 
@@ -64,7 +50,7 @@ Everything lives in one SQL database, set by `DATABASE_URL`:
 | Table | Contents |
 |---|---|
 | `users` | Email, name, picture, Google account id and/or Argon2 password hash, email verified |
-| `email_otps`, `login_attempts` | Hashed 6-digit email codes; failed sign-ins for rate limiting |
+| `email_otps`, `login_attempts` | Hashed email codes; failed sign-ins for rate limiting |
 | `subscriptions` | Premium periods (from a payment or a coupon) |
 | `coupons`, `coupon_redemptions`, `billing_orders` | Coupons, who used them, and each checkout with the payment provider |
 | `user_settings` | Advisor, default style, notification toggles, linked Telegram chat |
@@ -81,8 +67,9 @@ Losing `APP_ENCRYPTION_KEY` makes saved keys unreadable; users would have to re-
 ## Deploy (Docker on a VPS)
 
 `docker compose` runs the app with `ENV=production`, which:
-- turns dev sign-in off, so configure **Google sign-in and/or SMTP** (for email + password) before you deploy
-- enforces Premium for the server's AI keys (`PREMIUM_ENFORCED`), and the stub payment provider can't take payments, so only coupons activate Premium until a real provider is added
+- uses real random email codes (the fixed `7891` is never accepted), so configure **Google sign-in and/or SMTP** (for email + password) before you deploy
+- the stub payment provider can't take payments, so only coupons activate Premium until a real provider is added
+- Telegram uses the webhook (Deploy step 6) instead of polling
 - requires `APP_ENCRYPTION_KEY` and serves cookies over HTTPS only
 - uses a fresh Postgres database; local SQLite data isn't copied, so users re-enter their keys and re-link Telegram
 
@@ -150,7 +137,7 @@ Set `NSE_HOLIDAYS` (comma-separated dates) so auto-analysis and order checks ski
 3. Put the production `.env` in `/opt/eztrading/.env` (see Deploy step 4). It never leaves the server.
 4. In GitHub → repo **Settings → Environments → production**:
    - **secrets:** `VPS_HOST` (IP or hostname), `VPS_USER` (`deploy`), `VPS_SSH_KEY` (contents of `eztrading_deploy`), optionally `VPS_KNOWN_HOSTS` (output of `ssh-keyscan <host>`, to pin the host key)
-   - **variables:** `DOMAIN` (e.g. `trade.example.com`), optionally `DEPLOY_PATH` (default `/opt/eztrading`)
+   - **variables:** `DOMAIN` (e.g. `trade.example.com`), optionally `DEPLOY_PATH` (default `/opt/eztrading`), and `IMAGE_PLATFORMS` = `linux/arm64` for an ARM server such as Oracle Cloud's free Ampere VMs (default `linux/amd64`; ARM builds are emulated and take ~8 min instead of ~1)
    - optionally add yourself as a **required reviewer** to approve each deploy
 5. Push to `main`. Every later push deploys automatically once CI is green.
 

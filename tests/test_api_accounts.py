@@ -20,7 +20,8 @@ def test_public_endpoints(env):
     c = env.anonymous()
     assert c.get("/healthz").json() == {"ok": True}
     cfg = c.get("/api/config").json()
-    assert cfg["dev_login"] is True and cfg["google_enabled"] is False and cfg["telegram_enabled"] is True
+    assert cfg["google_enabled"] is False and cfg["telegram_enabled"] is True and cfg["password_login"] is True
+    assert cfg["fixed_otp"] == "7891"
 
 
 def test_csrf_header_required_for_mutations(env):
@@ -29,11 +30,11 @@ def test_csrf_header_required_for_mutations(env):
     assert c.put("/api/wallet", json={"deployable": 1}).status_code == 200
 
 
-def test_dev_login_disabled_in_production(env, settings):
-    prod = settings.model_copy(update={"env": "production", "app_encryption_key": Fernet.generate_key().decode()})
-    container = build_app_container(prod, session_factory=env.container.session_factory)
-    c = TestClient(create_app(container), headers={"X-Requested-With": "fetch"})
-    assert c.post("/auth/dev-login", json={"email": "x@example.com"}).status_code == 404
+def test_fixed_code_never_used_in_production(settings):
+    assert settings.otp_override == "7891"
+    prod = settings.model_copy(update={"env": "production"})
+    assert prod.otp_override == ""
+    assert Settings(_env_file=None).premium_required is True  # Premium is enforced unless turned off
 
 
 def test_users_are_isolated(env):
@@ -105,11 +106,9 @@ def test_schedules_crud_and_isolation(env):
 
 
 def test_google_sign_in_adopts_matching_dev_account_only(env):
-    c = env.client("me@example.com")
-    c.put("/api/wallet", json={"deployable": 5000})
-    with env.container.session_factory() as db:
+    with env.container.session_factory() as db:  # an account left over from the old passwordless dev login
         users = env.container.users(db)
-        dev_id = c.get("/api/me").json()["id"]
+        dev_id = users.upsert("dev:me@example.com", "me@example.com", "Me", "", "rules").id
         assert users.upsert("google-123", "Me@Example.com", "Me", "", "rules").id == dev_id   # keeps the dev account's data
         assert users.upsert("google-123", "me@example.com", "Me", "", "rules").id == dev_id   # idempotent
         with pytest.raises(ConflictError):

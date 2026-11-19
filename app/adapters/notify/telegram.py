@@ -23,8 +23,9 @@ class TelegramMessenger:
         try:
             self._client.post(self._url, json={"chat_id": chat_id, "text": text,
                                                "disable_web_page_preview": True}).raise_for_status()
-        except httpx.HTTPError as exc:
-            log.warning("Telegram send failed: %s", exc)
+        except httpx.HTTPError as exc:  # str(exc) contains the URL, which holds the bot token: don't log it
+            status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+            log.warning("Telegram send failed: %s%s", exc.__class__.__name__, f" (HTTP {status})" if status else "")
 
 
 class NullMessenger:
