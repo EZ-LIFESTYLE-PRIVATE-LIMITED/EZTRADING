@@ -52,6 +52,8 @@ def create_app(container: AppContainer | None = None) -> FastAPI:
         logging.getLogger(noisy).setLevel(logging.WARNING)
     container = container or build_app_container(get_settings())
     settings = container.settings
+    for warning in settings.login_config_warnings():
+        log.warning("Sign-in config: %s", warning)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):

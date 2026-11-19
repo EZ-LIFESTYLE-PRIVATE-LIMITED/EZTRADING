@@ -29,6 +29,22 @@ def healthz() -> dict:
     return {"ok": True}
 
 
+@public.get("/.well-known/assetlinks.json")
+def asset_links(app: AppContainer = Depends(get_app)) -> list[dict]:
+    """Digital Asset Links: proves the Android TWA and this site share an owner."""
+    s = app.settings
+    if not (s.twa_package_name and s.twa_fingerprints):
+        return []
+    return [{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": s.twa_package_name,
+            "sha256_cert_fingerprints": s.twa_fingerprints,
+        },
+    }]
+
+
 @public.get("/api/config")
 def public_config(app: AppContainer = Depends(get_app)) -> dict:
     s = app.settings

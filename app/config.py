@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     app_encryption_key: str = ""  # Fernet key; required in production
     allowed_emails: str = ""      # optional comma-separated allowlist
     fixed_otp: str = "7891"       # outside production every email code is this (no inbox needed locally)
+    # Which sign-in options the login page offers: "google", "password" (email + emailed code) and "dev"
+    # (email sign-in where the code is always FIXED_OTP, for sandboxes). E.g. "google" live, "dev" sandbox.
+    # Empty = Google when its keys are set, plus PASSWORD_LOGIN.
+    login_methods: str = ""
 
     # --- Google SSO ---------------------------------------------------------
     google_client_id: str = ""
@@ -92,6 +96,11 @@ class Settings(BaseSettings):
     telegram_webhook_secret: str = ""
     telegram_polling: bool | None = None  # receive bot messages by polling; default: outside production only
 
+    # --- Android app (Trusted Web Activity) ----------------------------------
+    # Served at /.well-known/assetlinks.json so the app opens full-screen without a URL bar.
+    twa_package_name: str = ""
+    twa_sha256_fingerprints: str = ""  # comma-separated "AA:BB:..." signing-cert fingerprints
+
     # --- Premium & billing ----------------------------------------------------
     premium_enforced: bool = True  # server AI keys need Premium (locally too; test payments succeed there)
     premium_plan: str = "premium_monthly"
@@ -122,13 +131,52 @@ class Settings(BaseSettings):
         return self.env.lower() == "production"
 
     @property
+    def login_method_set(self) -> set[str] | None:
+        """The LOGIN_METHODS list, or None when unset (fall back to the individual switches)."""
+        methods = {m.lower() for m in _split_csv(self.login_methods)}
+        return methods or None
+
+    def _login_allowed(self, method: str, legacy: bool) -> bool:
+        methods = self.login_method_set
+        return legacy if methods is None else method in methods
+
+    @property
+    def dev_login_enabled(self) -> bool:
+        """Sandbox sign-in: email codes are always FIXED_OTP, no inbox needed.
+
+        Always on outside production. In production (a sandbox deployment) it needs "dev" in LOGIN_METHODS
+        and a non-empty ALLOWED_EMAILS, so a copied sandbox config can never open sign-in to everyone.
+        """
+        if not self.fixed_otp.strip():
+            return False
+        if not self.is_production:
+            return True
+        return "dev" in (self.login_method_set or set()) and bool(self.allowed_email_set)
+
+    @property
     def otp_override(self) -> str:
-        """The fixed email code used outside production; never in production."""
-        return "" if self.is_production else self.fixed_otp.strip()
+        """The fixed email code, when dev (sandbox) sign-in is on; otherwise empty (real random codes)."""
+        return self.fixed_otp.strip() if self.dev_login_enabled else ""
+
+    @property
+    def google_configured(self) -> bool:
+        return bool(self.google_client_id and self.google_client_secret)
 
     @property
     def google_enabled(self) -> bool:
-        return bool(self.google_client_id and self.google_client_secret)
+        return self.google_configured and self._login_allowed("google", True)
+
+    def login_config_warnings(self) -> list[str]:
+        methods = self.login_method_set or set()
+        warnings = [f"LOGIN_METHODS has unknown entries: {sorted(methods - {'google', 'password', 'dev'})}"]             if methods - {"google", "password", "dev"} else []
+        if "google" in methods and not self.google_configured:
+            warnings.append("LOGIN_METHODS includes google but GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set")
+        if "dev" in methods and self.is_production and not self.allowed_email_set:
+            warnings.append("LOGIN_METHODS includes dev but ALLOWED_EMAILS is empty; dev sign-in stays off in production")
+        if self.dev_login_enabled and self.is_production:
+            warnings.append("Dev sign-in (fixed email code FIXED_OTP) is ON in production for ALLOWED_EMAILS; "
+                            "use for sandboxes only")
+        return warnings
 
     @property
     def premium_required(self) -> bool:
@@ -149,8 +197,10 @@ class Settings(BaseSettings):
 
     @property
     def password_login_enabled(self) -> bool:
-        """Needs a way to deliver OTPs: real SMTP, or the console in development."""
-        return self.password_login and (self.smtp_configured or not self.is_production)
+        """Email sign-in. Needs a way to deliver codes: real SMTP, the console in development, or the fixed
+        code (dev / sandbox)."""
+        wanted = self._login_allowed("password", self.password_login) or "dev" in (self.login_method_set or set())
+        return wanted and (self.smtp_configured or not self.is_production or self.dev_login_enabled)
 
     @property
     def push_enabled(self) -> bool:
@@ -165,6 +215,10 @@ class Settings(BaseSettings):
         if not self.telegram_enabled:
             return False
         return (not self.is_production) if self.telegram_polling is None else self.telegram_polling
+
+    @property
+    def twa_fingerprints(self) -> list[str]:
+        return _split_csv(self.twa_sha256_fingerprints, upper=True)
 
     @property
     def watchlist_symbols(self) -> list[str]:

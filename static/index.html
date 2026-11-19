@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/favicon-32.png" sizes="32x32">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <title>EZTrading</title>
   <script src="js/theme.js"></script>
   <link rel="stylesheet" href="styles.css">
@@ -32,6 +37,7 @@
               <button type="button" data-theme-choice="dark">Dark</button>
             </div>
           </div>
+          <button id="install-app" class="hidden" type="button" role="menuitem">Install app</button>
           <button id="logout-btn" type="button" role="menuitem">Sign out</button>
         </div>
       </div>
@@ -60,7 +66,7 @@
       </div>
       <div id="totals" class="totals"></div>
       <div class="table-wrap">
-        <table>
+        <table class="card-table">
           <thead><tr><th>Symbol</th><th class="num">Qty</th><th class="num">Avg</th><th class="num">LTP</th>
             <th class="num">Value</th><th class="num">P&amp;L</th><th class="num">Day</th></tr></thead>
           <tbody id="holdings-body"><tr><td colspan="7" class="muted">Loading…</td></tr></tbody>
@@ -88,7 +94,7 @@
         <button id="orders-refresh" class="btn btn-secondary" type="button">Refresh</button>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="card-table">
           <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th>Type</th>
             <th class="num">Price</th><th>Status</th><th>Kite order id</th></tr></thead>
           <tbody id="orders-body"><tr><td colspan="8" class="muted">No orders yet.</td></tr></tbody>
